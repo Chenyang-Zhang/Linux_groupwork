@@ -41,7 +41,7 @@ void start(){
         send(sockfd,msg,strlen(msg),0);
         if (strcmp(buf,"bye") == 0){
             memset(buf2,0,sizeof(buf2));
-            sprintf(buf2,"%s退出了聊天室",name);
+            sprintf(buf2,"\n%s退出了聊天室",name);
             send(sockfd,buf2,strlen(buf2),0);
             break;
         }
