@@ -8,7 +8,7 @@
 #include <pthread.h>
  
 int sockfd;//客户端socket
-char* IP = "192.168.190.143";//服务器的IP
+char* IP = "192.168.190.152";//服务器的IP
 short PORT = 10222;//服务器服务端口
 typedef struct sockaddr SA;
 char name[30];
@@ -31,15 +31,15 @@ void start(){
     void* recv_thread(void*);
     pthread_create(&id,0,recv_thread,0);
     char buf2[100] = {};
-    sprintf(buf2,"%s进入了聊天室",name);
+    sprintf(buf2,"%s进入了聊天室\n",name);
     send(sockfd,buf2,strlen(buf2),0);
     while(1){
         char buf[100] = {};
-        scanf("%s",buf);
+        fgets(buf,100,stdin);
         char msg[131] = {};
         sprintf(msg,"%s:%s",name,buf);
-        send(sockfd,msg,strlen(msg),0);
-        if (strcmp(buf,"bye") == 0){
+        send(sockfd,msg,strlen(msg),0);;
+        if (strcmp(buf,"bye\n") == 0){
             memset(buf2,0,sizeof(buf2));
             sprintf(buf2,"\n%s退出了聊天室",name);
             send(sockfd,buf2,strlen(buf2),0);
