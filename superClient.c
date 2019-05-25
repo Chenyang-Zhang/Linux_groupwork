@@ -117,7 +117,6 @@ void *recvMessage(void *arg)
 	int fd=*(int *)arg;
 	int ret=0;
 	char recvbuf[1024];
-	char filename[1024]="file_receive";
 	
 	while(1)
 	{
@@ -128,10 +127,14 @@ void *recvMessage(void *arg)
 		}
 		if(strcmp(recvbuf,"file_receive")==0)
 		{
-			recv_file(fd,filename);
+			                
+			memset(recvbuf,0,sizeof(recvbuf));
+			recv(fd,recvbuf,sizeof(recvbuf),0);
+			recv_file(fd,recvbuf);
 		}
 		if(strcmp(recvbuf,"file_send")==0)
 		{
+			memset(recvbuf,0,sizeof(recvbuf));
 			recv(fd,recvbuf,sizeof(recvbuf),0);
 			send_file(fd,recvbuf);
 		}

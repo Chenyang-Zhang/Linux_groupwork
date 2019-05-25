@@ -995,6 +995,7 @@ void load(int fd,char id[20])
 	close(fp);
 }
 //file_transfer
+//receive file from client
 void receive_file(int skfd, const char *path)
 {
 	FILE *fp = NULL;
@@ -1037,12 +1038,12 @@ void receive_file(int skfd, const char *path)
         }
     }
     fclose(fp);
-    printf("file transfer success\n");
+    printf("File transfer success\n");
     return;
 }
 
 
-
+//send file to client
 void send_file(int cnfd, const char *path)
 {
 
@@ -1059,6 +1060,11 @@ void send_file(int cnfd, const char *path)
 	    perror("send");
 	    return;
     }
+
+    memset(sendbuf,0,sizeof(sendbuf));
+    strcpy(sendbuf,path);
+    send(cnfd,sendbuf,strlen(sendbuf),0);
+
 
     if( !path ) {
         printf("file server: file path error!\n");
@@ -1097,6 +1103,7 @@ void send_file(int cnfd, const char *path)
     }
 
     fclose(fp);
+    printf("File transfer success\n");
 }
 
 /*void file_client(const char *ip, const char *path)
@@ -1379,6 +1386,7 @@ void *handlerClient(void *arg)
                                                 strcpy(sendbuf,"1:send a file to the server\n2:require a file from the server\n");
 						send(fd,sendbuf,strlen(sendbuf),0);
                                                 recv(fd,recvbuf,sizeof(recvbuf),0);
+						//receive file from client
 						if(strcmp(recvbuf,"1")==0)
 						{
 							memset(sendbuf,0,sizeof(sendbuf));
@@ -1395,6 +1403,7 @@ void *handlerClient(void *arg)
 
 							receive_file(fd,recvbuf);
 						}
+						//send file to client
 						if(strcmp(recvbuf,"2")==0)
 						{
 							memset(sendbuf,0,sizeof(sendbuf));
@@ -1404,6 +1413,7 @@ void *handlerClient(void *arg)
                                                         recv(fd,recvbuf,sizeof(recvbuf),0);
  
 						        send_file(fd,recvbuf);
+
 					         }
 					}
 					//打开信息
