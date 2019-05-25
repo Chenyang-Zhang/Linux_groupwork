@@ -2,11 +2,13 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <pthread.h>
+#include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
 #include <netinet/in.h>
+#include <netdb.h>
 #include <arpa/inet.h>
 #include <ctype.h>
 #include <memory.h>
@@ -15,10 +17,14 @@
 #include <time.h>
 #include <sys/stat.h>
 #define SIZE sizeof(cliMesg)  //结构体cliMesg的大小
+#define BUF_SIZE  (8192)
+
+unsigned char fileBuf[BUF_SIZE];
+
 
 typedef struct client_message
 {
-    char id[20];         //每个账号唯一id
+        char id[20];         //每个账号唯一id
 	char passwd[20];	 //账号密码
 	char name[50];		 //账号昵称
 	char hy[100][20];	 //好友列表，最大100个
@@ -31,7 +37,7 @@ typedef struct client_message
 
 typedef struct friend_message{
 
-    char rid[20];               //收信息的人
+        char rid[20];               //收信息的人
 	char sid[20];               //发信息的人
 	int type;                   //信息类型，好友请求1，私聊信息2,好友请求回复信息3
 	char mesg[1024];            //信息
@@ -988,14 +994,234 @@ void load(int fd,char id[20])
 	send(fd,sendbuf,strlen(sendbuf),0);
 	close(fp);
 }
+//file_transfer
+void receive_file(int skfd, const char *path)
+{
+	FILE *fp = NULL;
+	struct sockaddr_in sockAddr;
+	unsigned int fileSize, fileSize2;
+	int size, nodeSize;
+
+
+	size = read(skfd, (unsigned char *)&fileSize, 4);
+	if( size != 4 ) {
+		printf("file size error!\n");
+		exit(-1);
+	}
+	printf("file size:%d\n", fileSize);
+
+	if( (size = write(skfd, "OK", 2) ) < 0 ) {
+		perror("write");
+		exit(1);
+	}
+
+	fp = fopen(path, "w+");
+	if( fp == NULL ) {
+		perror("fopen");
+		return; 
+	}
+
+    fileSize2 = 0;
+    while(memset(fileBuf, 0, sizeof(fileBuf)), (size = read(skfd, fileBuf, sizeof(fileBuf))) > 0) {
+        unsigned int size2 = 0;
+        while( size2 < size ) {
+            if( (nodeSize = fwrite(fileBuf + size2, 1, size - size2, fp) ) < 0 ) {
+                perror("write");
+                exit(1);
+            }
+            size2 += nodeSize;
+        }
+        fileSize2 += size;
+        if(fileSize2 >= fileSize) {
+            break;
+        }
+    }
+    fclose(fp);
+    printf("file transfer success\n");
+    return;
+}
+
+
+
+void send_file(int cnfd, const char *path)
+{
+
+    FILE *fp;
+    unsigned int fileSize;
+    int size, netSize;
+    char buf[10];
+    char sendbuf[1024]={0};
+
+    memset(sendbuf,0,sizeof(sendbuf));
+    strcpy(sendbuf,"file_receive");
+    if(send(cnfd,sendbuf,strlen(sendbuf),0)==-1)
+    {
+	    perror("send");
+	    return;
+    }
+
+    if( !path ) {
+        printf("file server: file path error!\n");
+        return;
+    
+   }
+    fp=fopen(path,"r");
+    if( fp == NULL ) {
+        perror("fopen");
+        return;
+    }
+
+    fseek(fp, 0, SEEK_END);
+    fileSize = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    if(write(cnfd, (unsigned char *)&fileSize, 4) != 4) {
+        perror("write");
+        exit(1);
+    }
+
+    if( read(cnfd, buf, 2) != 2) {
+        perror("read");
+        exit(1);
+    }
+
+    while( ( size = fread(fileBuf, 1, BUF_SIZE, fp) ) > 0 ) {
+        unsigned int size2 = 0;
+        while( size2 < size ) {
+            if( (netSize = write(cnfd, fileBuf + size2, size - size2) ) < 0 ) {
+                perror("write");
+                exit(1);
+            }
+            size2 += netSize;
+        }
+    }
+
+    fclose(fp);
+}
+
+/*void file_client(const char *ip, const char *path)
+{
+    int skfd;
+    FILE *fp = NULL;
+    struct sockaddr_in sockAddr;
+    unsigned int fileSize, fileSize2;
+    int size, nodeSize;
+
+    //创建tcp socket
+    if((skfd=socket(AF_INET,SOCK_STREAM,0)) < 0) {
+        perror("socket");
+        exit(1);
+    } else {
+        printf("socket success!\n");
+    }
+
+    //创建结构设定待连接的服务器地址端口号
+    memset(&sockAddr, 0, sizeof(struct sockaddr_in));
+    sockAddr.sin_family = AF_INET;
+    sockAddr.sin_addr.s_addr = inet_addr(ip);
+    sockAddr.sin_port = htons(8889);
+
+    // 客户端调用connect主动发起连接请求 
+    if(connect(skfd, (struct sockaddr*)(&sockAddr), sizeof(struct sockaddr)) < 0) {
+        perror("ConnectError:");
+        exit(1);
+    } else {
+        printf("connnect success!\n");
+    }
+
+    size = read(skfd, (unsigned char *)&fileSize, 4);
+    if( size != 4 ) {
+        printf("file size error!\n");
+        close(skfd);
+        exit(-1);
+    }
+    printf("file size:%d\n", fileSize);
+
+    if( (size = write(skfd, "OK", 2) ) < 0 ) {
+        perror("write");
+        close(skfd);
+        exit(1);
+    }
+
+    fp = fopen(path, "w");
+    if( fp == NULL ) {
+        perror("fopen");
+        close(skfd);
+        return;
+    }
+
+    fileSize2 = 0;
+    while(memset(fileBuf, 0, sizeof(fileBuf)), (size = read(skfd, fileBuf, sizeof(fileBuf))) > 0) {
+        unsigned int size2 = 0;
+        while( size2 < size ) {
+            if( (nodeSize = fwrite(fileBuf + size2, 1, size - size2, fp) ) < 0 ) {
+                perror("write");
+                close(skfd);
+                exit(1);
+            }
+            size2 += nodeSize;
+        }
+        fileSize2 += size;
+        if(fileSize2 >= fileSize) {
+            break;
+        }
+    }
+    fclose(fp);
+    close(skfd);
+}
+*/
+
+
+
+/*void file_transfer(int fd, char od[20])
+{
+        char sendbuf[1024]={0};
+        char recvbuf[1024]={0};
+	char recvbuf_ip[1024]={0};
+        memset(sendbuf,0,sizeof(sendbuf));
+        strcpy(sendbuf,"Please choose to send or recieve a file:\n1.send a file\n2.receive a file\n");
+        send(fd,sendbuf,strlen(sendbuf),0);
+        memset(recvbuf,0,sizeof(recvbuf));
+        recv(fd,recvbuf,sizeof(recvbuf),0);
+        if(strcmp(recvbuf,"1") == 0)
+	{
+        memset(sendbuf,0,sizeof(sendbuf));
+        strcpy(sendbuf,"Please input the file name to send");
+        send(fd,sendbuf,strlen(sendbuf),0);
+        memset(recvbuf,0,sizeof(recvbuf));
+        recv(fd,recvbuf,sizeof(recvbuf),0);
+ 
+	fileserver(recvbuf);
+	}
+	
+	if(strcmp(recvbuf,"2") == 0)
+	{
+	memset(sendbuf,0,sizeof(sendbuf));
+        strcpy(sendbuf,"Please input the IP of the server:");
+        send(fd,sendbuf,strlen(sendbuf),0);
+        memset(recvbuf,0,sizeof(recvbuf_ip));
+        recv(fd,recvbuf,sizeof(recvbuf_ip),0);
+	memset(sendbuf,0,sizeof(sendbuf));
+        strcpy(sendbuf,"Please input the file name to receive");
+        send(fd,sendbuf,strlen(sendbuf),0);
+        memset(recvbuf,0,sizeof(recvbuf));
+        recv(fd,recvbuf,sizeof(recvbuf),0);
+        
+	file_client(recvbuf_ip, recvbuf);
+	}
+
+
+}*/
+
+
 //处理客户端的信息
 void *handlerClient(void *arg)
 {
-	 int fd=*(int *)arg;
-     char recvbuf[1024]={0};
-	 char recvbuf1[1024]={0};
-     char  sendbuf[1024]={0};
-	 int ret;
+       	int fd=*(int *)arg;
+	char recvbuf[1024]={0};
+       	char recvbuf1[1024]={0};
+	char sendbuf[1024]={0};
+	int ret;
 	
       //接受数据
 	 if((ret=recv(fd,recvbuf,sizeof(recvbuf),0))==-1)
@@ -1009,7 +1235,7 @@ void *handlerClient(void *arg)
     {
           memset(sendbuf,0,sizeof(sendbuf));	
           //登录界面
-		  strcpy(sendbuf,"欢迎使用快播，可使用功能如下\n\t1.登录帐号\n\t2.注册帐号\n\t3.退出\n");
+		  strcpy(sendbuf,"欢迎使用Linux chat，可使用功能如下\n\t1.登录帐号\n\t2.注册帐号\n\t3.退出\n");
 	      send(fd,sendbuf,strlen(sendbuf),0);
 	      memset(recvbuf,0,sizeof(recvbuf));
 	     //接受客户端的数据
@@ -1038,8 +1264,8 @@ void *handlerClient(void *arg)
 	         strcpy(sendbuf,"请输入登录密码");
 		     if(send(fd,sendbuf,strlen(sendbuf),0)==-1)
 		     {
-                  perror("send");
-		          return NULL;
+			     perror("send");
+			     return NULL;
 		     }
 		
               if(recv(fd,recvbuf1,sizeof(recvbuf1),0)==-1)
@@ -1105,7 +1331,7 @@ void *handlerClient(void *arg)
                 while(1)
                  {
                     memset(sendbuf,0,sizeof(sendbuf));
-					strcpy(sendbuf,"你可以使用的功能如下\n\t1.好友管理\n\t2.个人管理\n\t3.群聊天地\n\t4.私聊蜜语\n\t5.查看聊天记录\n\t6.下载聊天记录\n\t7.退出");
+					strcpy(sendbuf,"你可以使用的功能如下\n\t1.好友管理\n\t2.个人管理\n\t3.群聊天地\n\t4.私聊蜜语\n\t5.查看聊天记录\n\t6.下载聊天记录\n\t7.file_transfer\n\t8.退出");
 					send(fd,sendbuf,strlen(sendbuf),0);	
                     memset(recvbuf,0,sizeof(recvbuf));					
                     if(recv(fd,recvbuf,sizeof(recvbuf),0)==-1)
@@ -1118,6 +1344,7 @@ void *handlerClient(void *arg)
 					//对主界面进行分析
 					if(strcmp(recvbuf,"1")==0)
 					{
+					        //friends management
 						manage_friends(fd,recvbuf1);
 					}
 					if(strcmp(recvbuf,"2")==0)
@@ -1134,14 +1361,50 @@ void *handlerClient(void *arg)
 					{
 						//私聊
 						double_chat(fd,recvbuf1);
-					}
-                    if(strcmp(recvbuf,"5")==0)
-					{
+					}         
+                                        if(strcmp(recvbuf,"5")==0)
+					{        
+						//查看聊天记录
 						jilu(fd,recvbuf1);
 					}
 					 if(strcmp(recvbuf,"6")==0)
-					{
+					{ 
+						//下载聊天记录
 						load(fd,recvbuf1);
+					}
+					if(strcmp(recvbuf,"7")==0)
+					{
+					        //file_transfer
+                                                memset(sendbuf,0,sizeof(sendbuf));
+                                                strcpy(sendbuf,"1:send a file to the server\n2:require a file from the server\n");
+						send(fd,sendbuf,strlen(sendbuf),0);
+                                                recv(fd,recvbuf,sizeof(recvbuf),0);
+						if(strcmp(recvbuf,"1")==0)
+						{
+							memset(sendbuf,0,sizeof(sendbuf));
+                                                        strcpy(sendbuf,"Please input the file name to send:\n");
+                                                        send(fd,sendbuf,strlen(sendbuf),0);
+                                                        memset(recvbuf,0,sizeof(recvbuf));
+                                                        recv(fd,recvbuf,sizeof(recvbuf),0);
+                                                        memset(sendbuf,0,sizeof(sendbuf));
+                                                        strcpy(sendbuf,"file_send");
+                                                        send(fd,sendbuf,strlen(sendbuf),0);
+							memset(sendbuf,0,sizeof(sendbuf));
+                                                        strcpy(sendbuf,recvbuf);
+                                                        send(fd,sendbuf,strlen(sendbuf),0);
+
+							receive_file(fd,recvbuf);
+						}
+						if(strcmp(recvbuf,"2")==0)
+						{
+							memset(sendbuf,0,sizeof(sendbuf));
+                                                        strcpy(sendbuf,"Please input the file name to receive:\n");
+                                                        send(fd,sendbuf,strlen(sendbuf),0);
+                                                        memset(recvbuf,0,sizeof(recvbuf));
+                                                        recv(fd,recvbuf,sizeof(recvbuf),0);
+ 
+						        send_file(fd,recvbuf);
+					         }
 					}
 					//打开信息
 					if(strcmp(recvbuf,"open")==0)
@@ -1278,8 +1541,9 @@ void *handlerClient(void *arg)
 						}
 						
 					}
+
 					//退出
-					if(strcmp(recvbuf,"7")==0)
+					if(strcmp(recvbuf,"8")==0)
 					{
 						
 						p=head;
@@ -1350,7 +1614,7 @@ void * judgeClient(void)
 int main()
 {
 
-    int sockfd=0,confd=0;    //定义并初始化
+	int sockfd=0,confd=0;    //定义并初始化
 	int chlid=0;
 	int ret=0;
 	int len=sizeof(struct sockaddr);
@@ -1360,7 +1624,7 @@ int main()
 	memset(&myaddr,0,len);
 	memset(&otheraddr,0,len);	
 	
-    sockfd = socket(AF_INET, SOCK_STREAM,0);
+	sockfd = socket(AF_INET, SOCK_STREAM,0);
     
       //初始化结构体
 	myaddr.sin_family = AF_INET;
@@ -1403,7 +1667,7 @@ int main()
 			 printf("client ip=%s port=%d\n",inet_ntoa(otheraddr.sin_addr),ntohs(otheraddr.sin_port));
 
 			 //处理客户端
-             pthread_create(&id1,NULL,handlerClient,&confd);
+			 pthread_create(&id1,NULL,handlerClient,&confd);
 			 //判断客户端是否在线
 			 pthread_create(&id2,NULL,(void *)judgeClient,&confd);
             

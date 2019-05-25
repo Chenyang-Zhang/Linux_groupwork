@@ -1,5 +1,5 @@
-client: client.c
-	gcc -o client client.c -lpthread
+client: superClient.c
+	gcc -o  client superClient.c -lpthread
 
-server: server.c
-	gcc -o server server.c -lpthread
+server: superServer.c
+	gcc -o  server superServer.c -lpthread
