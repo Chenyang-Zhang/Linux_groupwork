@@ -1074,6 +1074,10 @@ void send_file(int cnfd, const char *path)
     fp=fopen(path,"r");
     if( fp == NULL ) {
         perror("fopen");
+	memset(sendbuf,0,sizeof(sendbuf));
+        strcpy(sendbuf,"No such file!");
+        send(cnfd,sendbuf,strlen(sendbuf),0);
+
         return;
     }
 
@@ -1105,6 +1109,31 @@ void send_file(int cnfd, const char *path)
     fclose(fp);
     printf("File transfer success\n");
 }
+//show the file list
+void file_list(int fd)
+{
+	FILE *fp;
+        int nLen = 0;
+        char *pchBuf = NULL;
+
+        system("ls > file_list.txt");
+        fp = fopen("file_list.txt", "r");
+        fseek(fp, 0, SEEK_END);
+        nLen = ftell(fp);
+        rewind(fp);
+        pchBuf = (char *) malloc(sizeof(char) * nLen + 1);
+        if(!pchBuf) {
+                perror("内存不够!\n");
+                exit(0);
+        }
+        nLen = fread(pchBuf, sizeof(char), nLen, fp);
+        pchBuf[nLen] = '\0';
+        
+        send(fd,pchBuf,strlen(pchBuf),0);
+
+	fclose(fp);
+}
+
 
 /*void file_client(const char *ip, const char *path)
 {
@@ -1383,7 +1412,7 @@ void *handlerClient(void *arg)
 					{
 					        //file_transfer
                                                 memset(sendbuf,0,sizeof(sendbuf));
-                                                strcpy(sendbuf,"1:send a file to the server\n2:require a file from the server\n");
+                                                strcpy(sendbuf,"Please choose a function:\n1:send a file to the server\n2:require a file from the server\n");
 						send(fd,sendbuf,strlen(sendbuf),0);
                                                 recv(fd,recvbuf,sizeof(recvbuf),0);
 						//receive file from client
@@ -1406,8 +1435,9 @@ void *handlerClient(void *arg)
 						//send file to client
 						if(strcmp(recvbuf,"2")==0)
 						{
+							file_list(fd);
 							memset(sendbuf,0,sizeof(sendbuf));
-                                                        strcpy(sendbuf,"Please input the file name to receive:\n");
+                                                        strcpy(sendbuf,"The files Server has is showing above. Please input the file name to receive:\n");
                                                         send(fd,sendbuf,strlen(sendbuf),0);
                                                         memset(recvbuf,0,sizeof(recvbuf));
                                                         recv(fd,recvbuf,sizeof(recvbuf),0);
