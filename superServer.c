@@ -24,13 +24,13 @@ unsigned char fileBuf[BUF_SIZE];
 
 typedef struct client_message
 {
-        char id[20];         //每个账号唯一id
+        char id[20];             //每个账号唯一id
 	char passwd[20];	 //账号密码
 	char name[50];		 //账号昵称
 	char hy[100][20];	 //好友列表，最大100个
-	int hys;             //好友数量
-	int online;          //0不在线，1在线
-	int fd;              //存放客户端成功连接后accept产生的新的套接字，不在线为-5
+	int hys;                 //好友数量
+	int online;              //0不在线，1在线
+	int fd;                  //存放客户端成功连接后accept产生的新的套接字，不在线为-5
 	int chatroom;		 //存放是否打开了双人聊天室，打开为1，没打开为0
 	struct client_message *next;	 //下一条链表的首地址	
 }cliMesg;
@@ -994,8 +994,8 @@ void load(int fd,char id[20])
 	send(fd,sendbuf,strlen(sendbuf),0);
 	close(fp);
 }
-//file_transfer
-//receive file from client
+//文件传输
+//从客户端接收文件
 void receive_file(int skfd, const char *path)
 {
 	FILE *fp = NULL;
@@ -1043,7 +1043,7 @@ void receive_file(int skfd, const char *path)
 }
 
 
-//send file to client
+//向客户端发送文件
 void send_file(int cnfd, const char *path)
 {
 
@@ -1109,7 +1109,7 @@ void send_file(int cnfd, const char *path)
     fclose(fp);
     printf("File transfer success\n");
 }
-//show the file list
+//向客户端显示已有文件
 void file_list(int fd)
 {
 	FILE *fp;
@@ -1251,6 +1251,7 @@ void file_list(int fd)
 
 
 //处理客户端的信息
+int people = 0;         //记录聊天室人数
 void *handlerClient(void *arg)
 {
        	int fd=*(int *)arg;
@@ -1258,6 +1259,7 @@ void *handlerClient(void *arg)
        	char recvbuf1[1024]={0};
 	char sendbuf[1024]={0};
 	int ret;
+	int size = 100;    //控制聊天室人数
 	
       //接受数据
 	 if((ret=recv(fd,recvbuf,sizeof(recvbuf),0))==-1)
@@ -1271,7 +1273,7 @@ void *handlerClient(void *arg)
     {
           memset(sendbuf,0,sizeof(sendbuf));	
           //登录界面
-		  strcpy(sendbuf,"欢迎使用Linux chat，可使用功能如下\n\t1.登录帐号\n\t2.注册帐号\n\t3.退出\n");
+		  strcpy(sendbuf,"欢迎使用由南京大学Linux小组开发的多功能聊天软件，请登陆账号或注册帐号\n\t1.登录帐号\n\t2.注册帐号\n\t3.退出\n");
 	      send(fd,sendbuf,strlen(sendbuf),0);
 	      memset(recvbuf,0,sizeof(recvbuf));
 	     //接受客户端的数据
@@ -1367,7 +1369,7 @@ void *handlerClient(void *arg)
                 while(1)
                  {
                     memset(sendbuf,0,sizeof(sendbuf));
-					strcpy(sendbuf,"你可以使用的功能如下\n\t1.好友管理\n\t2.个人管理\n\t3.群聊天地\n\t4.私聊蜜语\n\t5.查看聊天记录\n\t6.下载聊天记录\n\t7.file_transfer\n\t8.退出");
+					strcpy(sendbuf,"你可以使用的功能如下\n\t1.好友管理\n\t2.个人管理\n\t3.群聊\n\t4.私聊\n\t5.查看聊天记录\n\t6.下载聊天记录\n\t7.传输文件\n\t8.退出");
 					send(fd,sendbuf,strlen(sendbuf),0);	
                     memset(recvbuf,0,sizeof(recvbuf));					
                     if(recv(fd,recvbuf,sizeof(recvbuf),0)==-1)
@@ -1390,6 +1392,15 @@ void *handlerClient(void *arg)
 					}
 					if(strcmp(recvbuf,"3")==0)
 					{
+						people ++;
+						if(people > size)
+						{
+							memset(sendbuf,0,sizeof(sendbuf));
+                                                        strcpy(sendbuf,"对不起，聊天室已满!\n");
+                                                        send(fd,sendbuf,strlen(sendbuf),0);
+
+							continue;
+						}
 						//群聊
 						multi_chat(fd,recvbuf1);
 					}
@@ -1410,16 +1421,16 @@ void *handlerClient(void *arg)
 					}
 					if(strcmp(recvbuf,"7")==0)
 					{
-					        //file_transfer
+					        //传输文件
                                                 memset(sendbuf,0,sizeof(sendbuf));
-                                                strcpy(sendbuf,"Please choose a function:\n1:send a file to the server\n2:require a file from the server\n");
+                                                strcpy(sendbuf,"请选择一个功能:\n1:向服务器发送文件\n2:向服务器索取文件\n");
 						send(fd,sendbuf,strlen(sendbuf),0);
                                                 recv(fd,recvbuf,sizeof(recvbuf),0);
-						//receive file from client
+						//从客户端接收文件
 						if(strcmp(recvbuf,"1")==0)
 						{
 							memset(sendbuf,0,sizeof(sendbuf));
-                                                        strcpy(sendbuf,"Please input the file name to send:\n");
+                                                        strcpy(sendbuf,"请输入你想发送的文件名\n");
                                                         send(fd,sendbuf,strlen(sendbuf),0);
                                                         memset(recvbuf,0,sizeof(recvbuf));
                                                         recv(fd,recvbuf,sizeof(recvbuf),0);
@@ -1432,12 +1443,12 @@ void *handlerClient(void *arg)
 
 							receive_file(fd,recvbuf);
 						}
-						//send file to client
+						//向客户端发送文件
 						if(strcmp(recvbuf,"2")==0)
 						{
 							file_list(fd);
 							memset(sendbuf,0,sizeof(sendbuf));
-                                                        strcpy(sendbuf,"The files Server has is showing above. Please input the file name to receive:\n");
+                                                        strcpy(sendbuf,"服务器已有的文件列表在上面已列出，请输入要接受的文件名:\n");
                                                         send(fd,sendbuf,strlen(sendbuf),0);
                                                         memset(recvbuf,0,sizeof(recvbuf));
                                                         recv(fd,recvbuf,sizeof(recvbuf),0);
