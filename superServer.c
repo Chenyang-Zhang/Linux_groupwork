@@ -625,7 +625,7 @@ void add_friends(int fd,char id[20])
 }
 
 char a[100][20];   //存放聊天室人的id
-int len=0;         //聊天室人数
+int people = 0;         //记录聊天室人数
 //多人聊天
 void multi_chat(int fd,char id[20])
 {
@@ -633,8 +633,7 @@ void multi_chat(int fd,char id[20])
 	char recvbuf[1024]={0};
 	strcpy(sendbuf,"您已进入聊天室,输入quit退出,输入look查看当前人");
 	send(fd,sendbuf,sizeof(sendbuf),0);
-	strcpy(a[len],id);
-	len++;
+	strcpy(a[people-1],id);
 	int i;
 	cliMesg *p;
 	time_t timep;
@@ -645,11 +644,11 @@ void multi_chat(int fd,char id[20])
 		recv(fd,recvbuf,sizeof(recvbuf),0);
 		if(strcmp(recvbuf,"quit")==0)
 		{
-		   for(i=0;i<len;i++)
+		   for(i=0;i<people;i++)
 		   {
 			   if(strcmp(a[i],id)==0)
 			   {
-				   while(i<len-1)
+				   while(i<people-1)
 				   {
 					   strcpy(a[i],a[i+1]);
 					   i++;
@@ -657,8 +656,8 @@ void multi_chat(int fd,char id[20])
 				   
 			   }		   
 		   }
-		   len--;
-		   for(i=0;i<len;i++)
+		   people--;
+		   for(i=0;i<people;i++)
 		   {
 			   p=head->next;
 			   while(p)
@@ -681,9 +680,9 @@ void multi_chat(int fd,char id[20])
 		if(strcmp(recvbuf,"look")==0)
 	    {
 			memset(sendbuf,0,sizeof(sendbuf));
-			sprintf(sendbuf,"当前聊天室有%d人,他们是：",len);
+			sprintf(sendbuf,"当前聊天室有%d人,他们是：",people);
 			send(fd,sendbuf,strlen(sendbuf),0);
-			for(i=0;i<len;i++)
+			for(i=0;i<people;i++)
 			{
 				p=head->next;
 				while(p)
@@ -701,7 +700,7 @@ void multi_chat(int fd,char id[20])
 			continue;
 		}
         //群发消息
-        for(i=0;i<len;i++)
+        for(i=0;i<people;i++)
 		{
 			p=head->next;
 			while(p)
@@ -1252,7 +1251,6 @@ void file_list(int fd)
 
 
 //处理客户端的信息
-int people = 0;         //记录聊天室人数
 void *handlerClient(void *arg)
 {
        	int fd=*(int *)arg;
