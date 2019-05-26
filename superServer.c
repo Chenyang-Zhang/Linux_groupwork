@@ -1,4 +1,6 @@
-﻿#include <stdio.h>
+﻿/* This program is used for the course "Operating System and Linux Programming"*/
+
+#include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <pthread.h>
@@ -17,10 +19,7 @@
 #include <time.h>
 #include <sys/stat.h>
 #define SIZE sizeof(cliMesg)  //结构体cliMesg的大小
-#define BUF_SIZE  (8192)
-
-unsigned char fileBuf[BUF_SIZE];
-
+#define BUF_SIZE  (8192)  //文件大小
 
 typedef struct client_message
 {
@@ -48,6 +47,8 @@ cliMesg *head=NULL;
 friMesg *head1=NULL; 
 int count =0;   //账号数量
 int count1=0;   //未发送的信息
+unsigned char fileBuf[BUF_SIZE];
+
 //创建账号信息的头指针
 cliMesg *create_count()
 {
@@ -282,7 +283,7 @@ void add(int fd)
 		return;
 	}
 	p1=head;
-	//判断注册账户是否存在
+	//判断账户是否重复
 	while(p1->next)
 	{
 		if(strcmp(p1->next->id,str)==0)
@@ -1054,7 +1055,7 @@ void send_file(int cnfd, const char *path)
     char sendbuf[1024]={0};
 
     memset(sendbuf,0,sizeof(sendbuf));
-    strcpy(sendbuf,"file_receive");
+    strcpy(sendbuf,"file_receive"); //向客户端发送信号，让其准备接受文件
     if(send(cnfd,sendbuf,strlen(sendbuf),0)==-1)
     {
 	    perror("send");
@@ -1116,8 +1117,8 @@ void file_list(int fd)
         int nLen = 0;
         char *pchBuf = NULL;
 
-        system("ls > file_list.txt");
-        fp = fopen("file_list.txt", "r");
+        system("ls -a > file_list.txt"); //查看服务器目录下的所有文件，将结果重定向到file_list.txt文件中
+        fp = fopen("file_list.txt", "r"); //将文件内容发送给客户端
         fseek(fp, 0, SEEK_END);
         nLen = ftell(fp);
         rewind(fp);
@@ -1273,10 +1274,10 @@ void *handlerClient(void *arg)
     {
           memset(sendbuf,0,sizeof(sendbuf));	
           //登录界面
-		  strcpy(sendbuf,"欢迎使用由南京大学Linux小组开发的多功能聊天软件，请登陆账号或注册帐号\n\t1.登录帐号\n\t2.注册帐号\n\t3.退出\n");
+		  strcpy(sendbuf,"*****欢迎使用由南京大学Linux小组开发的多功能聊天软件，请登陆账号或注册帐号*****\n\t1.登录帐号(*･´ω`･)っ\n\t2.注册帐号(๑•̀ㅂ•́)\n\t3.退出\n");
 	      send(fd,sendbuf,strlen(sendbuf),0);
 	      memset(recvbuf,0,sizeof(recvbuf));
-	     //接受客户端的数据
+	     //接受客户端的数据,运行相应功能
 	     if(recv(fd,recvbuf,sizeof(recvbuf),0)==-1)
 	     {
               perror("recv");
@@ -1379,7 +1380,7 @@ void *handlerClient(void *arg)
 					}
 					printf("buf=%s",recvbuf);
 					
-					//对主界面进行分析
+					//根据用户选择运行相应功能
 					if(strcmp(recvbuf,"1")==0)
 					{
 					        //friends management
@@ -1435,10 +1436,10 @@ void *handlerClient(void *arg)
                                                         memset(recvbuf,0,sizeof(recvbuf));
                                                         recv(fd,recvbuf,sizeof(recvbuf),0);
                                                         memset(sendbuf,0,sizeof(sendbuf));
-                                                        strcpy(sendbuf,"file_send");
+                                                        strcpy(sendbuf,"file_send");      //向客户端发送信号，让其准备发送文件
                                                         send(fd,sendbuf,strlen(sendbuf),0);
 							memset(sendbuf,0,sizeof(sendbuf));
-                                                        strcpy(sendbuf,recvbuf);
+                                                        strcpy(sendbuf,recvbuf);         
                                                         send(fd,sendbuf,strlen(sendbuf),0);
 
 							receive_file(fd,recvbuf);
@@ -1446,7 +1447,7 @@ void *handlerClient(void *arg)
 						//向客户端发送文件
 						if(strcmp(recvbuf,"2")==0)
 						{
-							file_list(fd);
+							file_list(fd);     //向客户端显示已有文件列表
 							memset(sendbuf,0,sizeof(sendbuf));
                                                         strcpy(sendbuf,"服务器已有的文件列表在上面已列出，请输入要接受的文件名:\n");
                                                         send(fd,sendbuf,strlen(sendbuf),0);

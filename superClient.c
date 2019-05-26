@@ -14,8 +14,8 @@
 
 unsigned char fileBuf[BUF_SIZE];
 
-//file_receive
-void *recv_file(int skfd, const char *path)
+//从服务器接收文件
+void recv_file(int skfd, const char *path)
 {
     FILE *fp = NULL;
     struct sockaddr_in sockAddr;
@@ -38,7 +38,7 @@ void *recv_file(int skfd, const char *path)
     fp = fopen(path, "w+");
     if( fp == NULL ) {
         perror("fopen");
-        return NULL;
+        return;
     }
 
     fileSize2 = 0;
@@ -58,9 +58,10 @@ void *recv_file(int skfd, const char *path)
     }
     fclose(fp);
     printf("file transfer success\n");
-    return NULL;
+    return;
 }
 
+//向服务器发送文件
 void send_file(int cnfd, const char *path)
 {
 
@@ -125,22 +126,22 @@ void *recvMessage(void *arg)
 		{
 			return NULL;
 		}
-		if(strcmp(recvbuf,"file_receive")==0)
+		if(strcmp(recvbuf,"file_receive")==0) //收到接收文件的信号，调用接收文件的函数
 		{
 			                
 			memset(recvbuf,0,sizeof(recvbuf));
-			recv(fd,recvbuf,sizeof(recvbuf),0);
+			recv(fd,recvbuf,sizeof(recvbuf),0); //接收要接收的文件名
 			recv_file(fd,recvbuf);
 		}
-		if(strcmp(recvbuf,"file_send")==0)
+		if(strcmp(recvbuf,"file_send")==0)  //收到发送文件的信号，调用发送文件的函数
 		{
 			memset(recvbuf,0,sizeof(recvbuf));
-			recv(fd,recvbuf,sizeof(recvbuf),0);
+			recv(fd,recvbuf,sizeof(recvbuf),0); //接收要发送的文件名
 			send_file(fd,recvbuf);
 		}
 
 
-		if(strcmp(recvbuf,"xiazai")==0)
+		if(strcmp(recvbuf,"xiazai")==0) //下载聊天记录
 		{
 			system("rm -f mesg.txt");//确保本地没有此文件
 			int fp;		//文件标识符
@@ -174,6 +175,7 @@ void *recvMessage(void *arg)
     }
 	
 }
+//向服务器发送信息
 void *sendMessage(void *arg)
 {
 	//发送
@@ -264,7 +266,7 @@ int main()
 	char recvbuf[1024]={0};
         char sendbuf[1024]={0};
     
-    //给服务器 发送信息
+       //给服务器 发送信息
         strcpy(sendbuf,"hi,I am client");	
 
 	if(send(sockfd,sendbuf,strlen(sendbuf),0)==-1)
