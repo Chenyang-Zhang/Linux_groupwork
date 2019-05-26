@@ -193,46 +193,6 @@ void *sendMessage(void *arg)
 	}	
 }
 
-/*void send_file(int cnfd, const char*path)
-{
-	FILE *fp = NULL;
-	unsigned int fileSize;
-	int size, netSize;
-
-	fp = fopen(path, "r");
-	if( fp == NULL ) {
-		perror("fopen");
-		return;
-	}
-
-	fseek(fp, 0, SEEK_END);
-	fileSize = ftell(fp);
-	fseek(fp, 0, SEEK_SET);
-
-	if(write(cnfd, (unsigned char *)&fileSize, 4) != 4) {
-		perror("write");
-		exit(1);
-    }
-	if( read(cnfd, buf, 2) != 2) {
-		perror("read");
-		exit(1);
-	}
-	
-	while( ( size = fread(fileBuf, 1, BUF_SIZE, fp) ) > 0 ) {
-		unsigned int size2 = 0;
-	       	while( size2 < size ) {
-			if( (netSize = write(cnfd, fileBuf + size2, size - size2) ) < 0 ) {
-				perror("write");
-				exit(1);
-            }
-            size2 += netSize;
-        }
-    }
-
-    fclose(fp);
-}*/
-
-
 int main()
 {
         int sockfd=0;
