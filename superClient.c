@@ -184,7 +184,9 @@ void *sendMessage(void *arg)
 	while(1)
 	{
 			memset(sendmsg,0,sizeof(sendmsg));
-			scanf("%s",sendmsg);
+			fgets(sendmsg,1024,stdin);
+			if (sendmsg[strlen(sendmsg)-1] == '\n')
+				sendmsg[strlen(sendmsg)-1] = '\0'; 
 			if(send(fd,sendmsg,strlen(sendmsg),0)==-1)
 			{
 				return NULL; 	
