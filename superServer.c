@@ -1494,7 +1494,12 @@ void *handlerClient(void *arg)
 							}
 							p=p->next;
 						}
-						goto exit_p;
+						memset(sendbuf,0,sizeof(sendbuf));
+                                                strcpy(sendbuf,"欢迎下次再来");
+                                                send(fd,sendbuf,strlen(sendbuf),0);
+						close(fd);
+						return NULL;
+
 					}
 				
 			      }
@@ -1508,10 +1513,10 @@ void *handlerClient(void *arg)
 	     }
 	     else if(strcmp(recvbuf,"3")==0)
 	     {
-exit_p:memset(sendbuf,0,sizeof(sendbuf));
-       strcpy(sendbuf,"欢迎下次再来");
-       send(fd,sendbuf,strlen(sendbuf),0);
-       break;
+		     memset(sendbuf,0,sizeof(sendbuf));
+		     strcpy(sendbuf,"欢迎下次再来");
+		     send(fd,sendbuf,strlen(sendbuf),0);
+		     break;
 	    }
 	     else
 	    {
