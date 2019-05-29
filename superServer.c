@@ -1157,9 +1157,9 @@ void *handlerClient(void *arg)
     {
           memset(sendbuf,0,sizeof(sendbuf));	
           //登录界面
-		  strcpy(sendbuf,"*****欢迎使用由南京大学Linux小组开发的多功能聊天软件，请登陆账号或注册帐号*****\n\t1.登录帐号(*･´ω`･)っ\n\t2.注册帐号(๑•̀ㅂ•́)\n\t3.退出\n");
-	      send(fd,sendbuf,strlen(sendbuf),0);
-	      memset(recvbuf,0,sizeof(recvbuf));
+	  strcpy(sendbuf,"*****欢迎使用由南京大学Linux小组开发的多功能聊天软件，请登陆账号或注册帐号*****\n\t1.登录帐号(*･´ω`･)っ\n\t2.注册帐号(๑•̀ㅂ•́)\n\t3.退出\n");
+	  send(fd,sendbuf,strlen(sendbuf),0);
+	  memset(recvbuf,0,sizeof(recvbuf));
 	     //接受客户端的数据,运行相应功能
 	     if(recv(fd,recvbuf,sizeof(recvbuf),0)==-1)
 	     {
@@ -1198,10 +1198,10 @@ void *handlerClient(void *arg)
                //匹配账号密码是否存在且正确
                if(check_iscount(recvbuf)==0 ||check_coutpasswd(recvbuf,recvbuf1)==0)
                {
-                memset(sendbuf,0,sizeof(sendbuf));
-				strcpy(sendbuf,"输入账号或密码不正确");
-				send(fd,sendbuf,strlen(sendbuf),0);
-				continue;
+		       memset(sendbuf,0,sizeof(sendbuf));
+		       strcpy(sendbuf,"输入账号或密码不正确");
+		       send(fd,sendbuf,strlen(sendbuf),0);
+		       continue;
 	           }
 		       //判断该账号是否在线
                 else if(countOnline(recvbuf)==1)
@@ -1215,7 +1215,7 @@ void *handlerClient(void *arg)
                {
                 strcpy(recvbuf1,recvbuf);
                 memset(sendbuf,0,sizeof(sendbuf));
-			    strcpy(sendbuf,"登录成功");
+	        strcpy(sendbuf,"登录成功");
                 cliMesg *p;
 	            p=head;
 			    while(p->next)
@@ -1231,7 +1231,7 @@ void *handlerClient(void *arg)
 			    }
 			    send(fd,sendbuf,strlen(sendbuf),0);
                 //登录时判断是否有新消息
-                friMesg *p9;
+		friMesg *p9;
 				p9=head1;
 				int len=0;
 				while(p9)
@@ -1252,11 +1252,12 @@ void *handlerClient(void *arg)
 				memset(recvbuf,0,sizeof(recvbuf));
                 while(1)
                  {
-                    memset(sendbuf,0,sizeof(sendbuf));
-					strcpy(sendbuf,"你可以使用的功能如下\n\t1.好友管理\n\t2.个人管理\n\t3.群聊\n\t4.私聊\n\t5.查看聊天记录\n\t6.下载聊天记录\n\t7.传输文件\n\t8.退出");
-					send(fd,sendbuf,strlen(sendbuf),0);	
-                    memset(recvbuf,0,sizeof(recvbuf));					
-                    if(recv(fd,recvbuf,sizeof(recvbuf),0)==-1)
+			 memset(sendbuf,0,sizeof(sendbuf));
+			 strcpy(sendbuf,"你可以使用的功能如下\n\t1.好友管理\n\t2.个人管理\n\t3.群聊\n\t4.私聊\n\t5.查看聊天记录\n\t6.下载聊天记录\n\t7.传输文件\n\t8.退出");
+			 send(fd,sendbuf,strlen(sendbuf),0);	
+                         memset(recvbuf,0,sizeof(recvbuf));					
+			 
+			 if(recv(fd,recvbuf,sizeof(recvbuf),0)==-1)
 					{
 						perror("recv");
 						return NULL;
@@ -1493,7 +1494,7 @@ void *handlerClient(void *arg)
 							}
 							p=p->next;
 						}
-						break;
+						goto exit_p;
 					}
 				
 			      }
@@ -1507,10 +1508,10 @@ void *handlerClient(void *arg)
 	     }
 	     else if(strcmp(recvbuf,"3")==0)
 	     {
-           memset(sendbuf,0,sizeof(sendbuf));
-		   strcpy(sendbuf,"欢迎下次再来");
-		   send(fd,sendbuf,strlen(sendbuf),0);
-		   break;
+exit_p:memset(sendbuf,0,sizeof(sendbuf));
+       strcpy(sendbuf,"欢迎下次再来");
+       send(fd,sendbuf,strlen(sendbuf),0);
+       break;
 	    }
 	     else
 	    {
