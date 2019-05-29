@@ -17,274 +17,234 @@ unsigned char fileBuf[BUF_SIZE];
 //从服务器接收文件
 void recv_file(int skfd, const char *path)
 {
-    FILE *fp = NULL;
-    struct sockaddr_in sockAddr;
-    unsigned int fileSize, fileSize2;
-    int size, nodeSize;
+	FILE *fp = NULL;
+	struct sockaddr_in sockAddr;
+	unsigned int fileSize, fileSize2;
+	int size, nodeSize;
 
 
-    size = read(skfd, (unsigned char *)&fileSize, 4);
-    if( size != 4 ) {
-        printf("file size error!\n");
-        exit(-1);
-    }
-    printf("file size:%d\n", fileSize);
+	size = read(skfd, (unsigned char *) &fileSize, 4);
+	if (size != 4) {
+		printf("file size error!\n");
+		exit(-1);
+	}
+	printf("file size:%d\n", fileSize);
 
-    if( (size = write(skfd, "OK", 2) ) < 0 ) {
-        perror("write");
-        exit(1);
-    }
+	if ((size = write(skfd, "OK", 2)) < 0) {
+		perror("write");
+		exit(1);
+	}
 
-    fp = fopen(path, "w+");
-    if( fp == NULL ) {
-        perror("fopen");
-        return;
-    }
+	fp = fopen(path, "w+");
+	if (fp == NULL) {
+		perror("fopen");
+		return;
+	}
 
-    fileSize2 = 0;
-    while(memset(fileBuf, 0, sizeof(fileBuf)), (size = read(skfd, fileBuf, sizeof(fileBuf))) > 0) {
-        unsigned int size2 = 0;
-        while( size2 < size ) {
-            if( (nodeSize = fwrite(fileBuf + size2, 1, size - size2, fp) ) < 0 ) {
-                perror("write");
-                exit(1);
-            }
-            size2 += nodeSize;
-        }
-        fileSize2 += size;
-        if(fileSize2 >= fileSize) {
-            break;
-        }
-    }
-    fclose(fp);
-    printf("file transfer success\n");
-    return;
+	fileSize2 = 0;
+	while (memset(fileBuf, 0, sizeof(fileBuf)),
+	       (size = read(skfd, fileBuf, sizeof(fileBuf))) > 0) {
+		unsigned int size2 = 0;
+		while (size2 < size) {
+			if ((nodeSize =
+			     fwrite(fileBuf + size2, 1, size - size2,
+				    fp)) < 0) {
+				perror("write");
+				exit(1);
+			}
+			size2 += nodeSize;
+		}
+		fileSize2 += size;
+		if (fileSize2 >= fileSize) {
+			break;
+		}
+	}
+	fclose(fp);
+	printf("file transfer success\n");
+	return;
 }
 
 //向服务器发送文件
 void send_file(int cnfd, const char *path)
 {
 
-    FILE *fp;
-    unsigned int fileSize;
-    int size, netSize;
-    char buf[10];
-    char sendbuf[1024]={0};
+	FILE *fp;
+	unsigned int fileSize;
+	int size, netSize;
+	char buf[10];
+	char sendbuf[1024] = { 0 };
 
 
-    if( !path ) {
-        printf("file server: file path error!\n");
-        return;
+	if (!path) {
+		printf("file server: file path error!\n");
+		return;
 
-   }
-    fp=fopen(path,"r");
-    if( fp == NULL ) {
-        perror("fopen");
-        return;
-    }
+	}
+	fp = fopen(path, "r");
+	if (fp == NULL) {
+		perror("fopen");
+		return;
+	}
 
-    fseek(fp, 0, SEEK_END);
-    fileSize = ftell(fp);
-    fseek(fp, 0, SEEK_SET);
+	fseek(fp, 0, SEEK_END);
+	fileSize = ftell(fp);
+	fseek(fp, 0, SEEK_SET);
 
-    if(write(cnfd, (unsigned char *)&fileSize, 4) != 4) {
-        perror("write");
-        exit(1);
-    }
+	if (write(cnfd, (unsigned char *) &fileSize, 4) != 4) {
+		perror("write");
+		exit(1);
+	}
 
-    if( read(cnfd, buf, 2) != 2) {
-        perror("read");
-        exit(1);
-    }
+	if (read(cnfd, buf, 2) != 2) {
+		perror("read");
+		exit(1);
+	}
 
-    while( ( size = fread(fileBuf, 1, BUF_SIZE, fp) ) > 0 ) {
-        unsigned int size2 = 0;
-        while( size2 < size ) {
-            if( (netSize = write(cnfd, fileBuf + size2, size - size2) ) < 0 ) {
-                perror("write");
-                exit(1);
-            }
-            size2 += netSize;
-        }
-    }
+	while ((size = fread(fileBuf, 1, BUF_SIZE, fp)) > 0) {
+		unsigned int size2 = 0;
+		while (size2 < size) {
+			if ((netSize =
+			     write(cnfd, fileBuf + size2,
+				   size - size2)) < 0) {
+				perror("write");
+				exit(1);
+			}
+			size2 += netSize;
+		}
+	}
 
-    fclose(fp);
+	fclose(fp);
 }
-                   
+
 
 //接受服务器的信息
 void *recvMessage(void *arg)
 {
-	int fd=*(int *)arg;
-	int ret=0;
+	int fd = *(int *) arg;
+	int ret = 0;
 	char recvbuf[1024];
-	
-	while(1)
-	{
-		memset(recvbuf,0,sizeof(recvbuf));
-		if((ret=recv(fd,recvbuf,sizeof(recvbuf),0))==-1)
-		{
+
+	while (1) {
+		memset(recvbuf, 0, sizeof(recvbuf));
+		if ((ret = recv(fd, recvbuf, sizeof(recvbuf), 0)) == -1) {
 			return NULL;
 		}
-		if(strcmp(recvbuf,"file_receive")==0) //收到接收文件的信号，调用接收文件的函数
+		if (strcmp(recvbuf, "file_receive") == 0)	//收到接收文件的信号，调用接收文件的函数
 		{
-			                
-			memset(recvbuf,0,sizeof(recvbuf));
-			recv(fd,recvbuf,sizeof(recvbuf),0); //接收要接收的文件名
-			recv_file(fd,recvbuf);
+
+			memset(recvbuf, 0, sizeof(recvbuf));
+			recv(fd, recvbuf, sizeof(recvbuf), 0);	//接收要接收的文件名
+			recv_file(fd, recvbuf);
 		}
-		if(strcmp(recvbuf,"file_send")==0)  //收到发送文件的信号，调用发送文件的函数
+		if (strcmp(recvbuf, "file_send") == 0)	//收到发送文件的信号，调用发送文件的函数
 		{
-			memset(recvbuf,0,sizeof(recvbuf));
-			recv(fd,recvbuf,sizeof(recvbuf),0); //接收要发送的文件名
-			send_file(fd,recvbuf);
+			memset(recvbuf, 0, sizeof(recvbuf));
+			recv(fd, recvbuf, sizeof(recvbuf), 0);	//接收要发送的文件名
+			send_file(fd, recvbuf);
 		}
 
 
-		if(strcmp(recvbuf,"xiazai")==0) //下载聊天记录
+		if (strcmp(recvbuf, "xiazai") == 0)	//下载聊天记录
 		{
-			system("rm -f mesg.txt");//确保本地没有此文件
-			int fp;		//文件标识符
-			fp=open("mesg.txt",O_WRONLY|O_CREAT|O_TRUNC,0666);
-			memset(recvbuf,0,1024);
+			system("rm -f mesg.txt");	//确保本地没有此文件
+			int fp;	//文件标识符
+			fp = open("mesg.txt", O_WRONLY | O_CREAT | O_TRUNC,
+				  0666);
+			memset(recvbuf, 0, 1024);
 			//接收数据，如果“endend”表示接收结束
-			while(1)		
-			{
-				recv(fd,&ret,sizeof(int),0);
-				recv(fd,recvbuf,ret,0);
-				if(strncmp(recvbuf,"endend",6)==0)
-				{
+			while (1) {
+				recv(fd, &ret, sizeof(int), 0);
+				recv(fd, recvbuf, ret, 0);
+				if (strncmp(recvbuf, "endend", 6) == 0) {
 					break;
 				}
-				write(fp,recvbuf,ret);
- 
+				write(fp, recvbuf, ret);
+
 			}
-			close(fp); 
+			close(fp);
 			continue;
-			
+
 		}
-		if(strcmp(recvbuf,"连接成功")==0)
-		{
+		if (strcmp(recvbuf, "连接成功") == 0) {
 			system("clear");
 		}
-		puts(recvbuf);	
-		if(ret==0)
-		{
+		puts(recvbuf);
+		if (ret == 0) {
 			exit(0);
 		}
-    }
-	
+	}
+
 }
+
 //向服务器发送信息
 void *sendMessage(void *arg)
 {
 	//发送
-	int fd=*(int *)arg;
+	int fd = *(int *) arg;
 	char sendmsg[1024];
-	while(1)
-	{
-			memset(sendmsg,0,sizeof(sendmsg));
-			fgets(sendmsg,1024,stdin);
-			if (sendmsg[strlen(sendmsg)-1] == '\n')
-				sendmsg[strlen(sendmsg)-1] = '\0'; 
-			if(send(fd,sendmsg,strlen(sendmsg),0)==-1)
-			{
-				return NULL; 	
-			}
-		
-	}	
+	while (1) {
+		memset(sendmsg, 0, sizeof(sendmsg));
+		fgets(sendmsg, 1024, stdin);
+		if (sendmsg[strlen(sendmsg) - 1] == '\n')
+			sendmsg[strlen(sendmsg) - 1] = '\0';
+		if (send(fd, sendmsg, strlen(sendmsg), 0) == -1) {
+			return NULL;
+		}
+
+	}
 }
 
 int main()
 {
-        int sockfd=0;
-	int ret=0;
-	int len=sizeof(struct sockaddr);
-	
+	int sockfd = 0;
+	int ret = 0;
+	int len = sizeof(struct sockaddr);
+
 	struct sockaddr_in otheraddr;
-	memset(&otheraddr,0,len);	
+	memset(&otheraddr, 0, len);
 	//tcp套接字连接
-	if((sockfd=socket(AF_INET,SOCK_STREAM,0))==-1)
-	{
+	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
 		perror("sockfd");
-		return -1;	
+		return -1;
 	}
 	//初始化结构体，把服务器ip地址和端口号
 	otheraddr.sin_family = AF_INET;
 	otheraddr.sin_port = htons(8889);
-	otheraddr.sin_addr.s_addr=inet_addr("0.0.0.0");
+	otheraddr.sin_addr.s_addr = inet_addr("0.0.0.0");
 	//连接服务器
-	if(connect(sockfd,(struct sockaddr*)&otheraddr,len)==-1)
-	{
+	if (connect(sockfd, (struct sockaddr *) &otheraddr, len) == -1) {
 		perror("connect");
-		return -1;		
+		return -1;
 	}
-	printf("connect success...client fd=%d\n",sockfd);
-	printf("client ip=%s,port=%d\n",inet_ntoa(otheraddr.sin_addr),ntohs(otheraddr.sin_port));		
-         
+	printf("connect success...client fd=%d\n", sockfd);
+	printf("client ip=%s,port=%d\n", inet_ntoa(otheraddr.sin_addr),
+	       ntohs(otheraddr.sin_port));
 
-	pthread_t id1,id2;
 
-	char recvbuf[1024]={0};
-        char sendbuf[1024]={0};
-    
-       //给服务器 发送信息
-        strcpy(sendbuf,"hi,I am client");	
+	pthread_t id1, id2;
 
-	if(send(sockfd,sendbuf,strlen(sendbuf),0)==-1)
-	{
+	char recvbuf[1024] = { 0 };
+	char sendbuf[1024] = { 0 };
+
+	//给服务器 发送信息
+	strcpy(sendbuf, "hi,I am client");
+
+	if (send(sockfd, sendbuf, strlen(sendbuf), 0) == -1) {
 		perror("send");
 		return -1;
 	}
-	if(recv(sockfd,recvbuf,sizeof(recvbuf),0)==-1)
-	{
+	if (recv(sockfd, recvbuf, sizeof(recvbuf), 0) == -1) {
 		perror("recv");
 		return -1;
 	}
-	printf("sever say:%s\n",recvbuf);
-	
+	printf("sever say:%s\n", recvbuf);
+
 	//创建收发线程
-	pthread_create(&id1,NULL,sendMessage,&sockfd);
-	pthread_create(&id2,NULL,recvMessage,&sockfd);
+	pthread_create(&id1, NULL, sendMessage, &sockfd);
+	pthread_create(&id2, NULL, recvMessage, &sockfd);
 
-	
+
 	//等待发送线程结束
-	pthread_join(id1,NULL);
-    return 0;
+	pthread_join(id1, NULL);
+	return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
